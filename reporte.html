@@ -1,0 +1,282 @@
+
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pañol Cainsa</title>
+  <link rel="stylesheet" type="text/css" href="https://use.fontawesome.com/releases/v5.1.0/css/all.css">
+  <link rel="stylesheet" href="/js/jquery-ui.css">
+  <link rel="stylesheet" type="text/css" href="/js/jquery.dataTables.css">
+  <link rel="stylesheet" href="/js/bootstrap.min.css">
+  <link rel="stylesheet" href="/js/buttons.dataTables.min.css">
+
+</head>
+    <body>
+        <div style="margin:100px;">
+            <nav class="navbar navbar-inverse navbar-static-top">
+                    <div class="container">
+                        <!--NAVBAR-->
+                        <a  class="fa fa-home fa-2x navbar-brand"  href="/"></a>
+                        <ul class="nav navbar-nav">
+                        <li >
+                            <a href="/">Registro Materiales</a>
+                        </li>
+                        <li class="active">
+                            <a href="/reporte.html">Reporte</a>
+                        </li>
+                        </ul>
+                    </div>
+            </nav>
+        
+            <div class="jumbotron">
+                <div class="col-sm-12">
+                        <legend>Filtre por rango de fechas: </legend>
+                        <label for="from">Desde</label>
+                        <input type="text" id="from" name="from">
+                        <label for="to">Hasta</label>
+                        <input type="text" id="to" name="to">
+                        <a id = "btnFiltrar" class="btn btn-primary">Filtrar</a>
+
+                        <fieldset>
+                                <label for="radTotal">Totales</label>
+                                <input class="radio" type="radio" name="radio-1" id="radTotal">
+                    
+                                <label for="radDetalle">Detallado</label>
+                                <input class="radio" type="radio" name="radio-1" id="radDetalle">
+                    
+                         </fieldset>
+                </div>
+                <br><br><br><br><br><br><br>
+            </div>
+        </div>
+
+
+        <div class="col-sm-1">
+            <!--BORDES-->
+        </div>
+        <div class="col-sm-10">
+            <h1 id="txtMateriales" >Total Materiales Entregados</h1>
+            <table id="gridMatTotal" class="display">
+                   
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Cantidad</th>
+                </tr>
+            </thead>
+            </table>
+
+            <table id="gridMatDetalle" class="display">
+                   
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Cantidad</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+            </table>
+
+        </div>
+        <div class="col-sm-1">
+            <!--BORDES-->
+        </div>
+        <br><br><br>
+    </body>
+</html>
+
+<script type="text/javascript" src="/js/moment.min.js"></script>
+<script src="/js/jquery-1.12.4.js"></script>
+<script src="/js/jquery-ui.js"></script>
+<script type="text/javascript" src="/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/js/jquery.dataTables.js"></script>
+<script type="text/javascript" src="/js/jszip.min.js"></script>
+<script type="text/javascript" src="/js/buttons.html5.min.js"></script>
+<script type="text/javascript" src="/js/dataTables.buttons.min.js"></script>
+
+
+  
+<script>
+
+
+    $(document).ready(function() {
+        $(".radio").checkboxradio();
+	    $('#radTotal').prop('checked',true).checkboxradio('refresh')
+        FormatRange();
+       // $('#gridMatTotal').hide();
+       // $('#txtMateriales').hide();
+    });
+
+
+    function FormatRange(){
+        var dateFormat = "mm/dd/yy",
+        from = $( "#from" )
+            .datepicker({
+            defaultDate: "+1w",
+            changeMonth: true,
+            buttonImage: "images/calendar.gif",
+            numberOfMonths: 2
+            })
+            .on( "change", function() {
+            to.datepicker( "option", "minDate", getDate( this ) );
+            }),
+        to = $( "#to" ).datepicker({
+            defaultDate: "+1w",
+            changeMonth: true,
+            numberOfMonths: 2
+        })
+        .on( "change", function() {
+            from.datepicker( "option", "maxDate", getDate( this ) );
+        });
+    
+        function getDate( element ) {
+        var date;
+        try {
+            date = $.datepicker.parseDate( dateFormat, element.value );
+        } catch( error ) {
+            date = null;
+        }
+    
+        return date;
+        }
+    }
+
+    $('#btnFiltrar').click(function(){
+       
+        var tableT = $('#gridMatTotal').DataTable();
+        tableT.destroy();
+        var tableD = $('#gridMatDetalle').DataTable();
+        tableD.destroy();
+
+        $('#gridMatTotal').show();
+        $('#txtMateriales').show();
+        var checkboxes = $( ".radio" ).checkboxradio();
+        if(checkboxes[1]["checked"]==true){ //0 crear viaje || 1 viajando
+            $('#gridMatTotal').hide();
+            $('#gridMatDetalle').show();
+            listarDetallado();
+        }else{
+            $('#gridMatTotal').show();
+            $('#gridMatDetalle').hide();
+           listarTotales();
+
+        }
+       
+
+    });
+    function listarDetallado(){
+        var from = document.getElementById('from').value;
+        var to = document.getElementById('to').value;
+        $.ajax({
+            url: '/reportesDetalle',
+            type: 'GET',
+            data: {desde: from , hasta: to}
+        })
+        .done(function(rows) {
+            myJSON = rows;
+            console.log(myJSON)
+            contador = 0;
+            while(contador < myJSON.length){
+                    myJSON[contador]["fecha"] = moment(myJSON[contador]["fecha"]).format("DD-MM-YYYY");
+                    //console.log(myJSON[contador]["fecha"])
+                    contador++;
+            }
+
+            datatable = $('#gridMatDetalle').dataTable({
+                dom: 'Bfrtip',
+                buttons: ['excelHtml5'],
+                "bAutoWidth" : false,
+                "aaData" : myJSON,
+                "columns" : [ 
+
+                    {"data" : "nombre"},
+                    {"data" : "cantidad"},
+                    {"data" : "fecha"}
+                ],
+                "columnDefs": [
+                    {"targets": [  ],
+                    "visible": false,
+                    "searchable": false},
+                ],
+                "select":
+                    {style: 'single'}
+                })
+                
+                $('#gridMatDetalle tbody').on('click', 'tr', function () {
+                   // idSelected = $(this)[0].children[0].innerText;
+                   // console.log($(this)[0].children[0].innerText);
+                   
+                    
+                    //hace visible la selecion 
+                    if ( $(this).hasClass('selected') ) {
+                        $(this).removeClass('selected');
+                    }
+                    else {
+                        datatable.$('tr.selected').removeClass('selected');
+                        $(this).addClass('selected');
+                    }
+                    });
+
+        })
+        .fail(function() {
+            console.log("error");
+        });
+
+    }
+
+    function listarTotales(){
+        
+        var from = document.getElementById('from').value;
+        var to = document.getElementById('to').value;
+        $.ajax({
+            url: '/reporteTotal',
+            type: 'GET',
+            data: {desde: from , hasta: to}
+        })
+        .done(function(rows) {
+            myJSON = rows;
+            console.log(myJSON)
+
+            datatable = $('#gridMatTotal').dataTable({
+                dom: 'Bfrtip',
+                buttons: ['excelHtml5'],
+                "bAutoWidth" : false,
+                "aaData" : myJSON,
+                "columns" : [ 
+
+                    {"data" : "nombre"},
+                    {"data" : "cantidad"}
+                ],
+                "columnDefs": [
+                    {"targets": [  ],
+                    "visible": false,
+                    "searchable": false},
+                ],
+                "select":
+                    {style: 'single'}
+                })
+                
+                $('#gridMatTotal tbody').on('click', 'tr', function () {
+                   // idSelected = $(this)[0].children[0].innerText;
+                   // console.log($(this)[0].children[0].innerText);
+                   
+                    
+                    //hace visible la selecion 
+                    if ( $(this).hasClass('selected') ) {
+                        $(this).removeClass('selected');
+                    }
+                    else {
+                        datatable.$('tr.selected').removeClass('selected');
+                        $(this).addClass('selected');
+                    }
+                    });
+
+        })
+        .fail(function() {
+            console.log("error");
+        });
+    }
+  
+</script>

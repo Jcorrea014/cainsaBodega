@@ -1,0 +1,321 @@
+<html>
+    <head>
+        <link rel="stylesheet" type="text/css" href="https://use.fontawesome.com/releases/v5.1.0/css/all.css">
+        <link rel="stylesheet" href="/js/bootstrap.min.css">
+        <link rel="stylesheet" href="/js/bootstrap-theme.min.css">
+        <link rel="stylesheet" type="text/css" href="/js/jquery.dataTables.css">
+        <link rel="stylesheet" type="text/css" href="/js/sweetalert2.min.css">
+        <link rel="stylesheet" href="/js/select2.min.css"  />
+        <title>Pañol Cainsa</title>
+    </head>
+
+    <body>
+        
+    <div style="margin:100px;">
+        <nav class="navbar navbar-inverse navbar-static-top">
+        <div class="container">
+            <!--NAVBAR-->
+            <a  class="fa fa-home fa-2x navbar-brand"  href="/"></a>
+            <ul class="nav navbar-nav">
+            <li class="active">
+                <a href="/">Registro Materiales</a>
+            </li>
+            <li >
+                <a href="/reporte.html">Reporte</a>
+            </li>
+            </ul>
+        </div>
+        </nav>
+        <!--OPCIONES DE INGRESO-->
+        <div class="jumbotron">
+                <div class="container">
+                        <div class="row">
+                                <div class="col-sm-4">
+                                <label>Materiales:</label>
+                                    <select id="selectMaterial" class="js-example-basic-multiple col-sm-12 "  multiple="multiple"></select>
+                                </div>
+                                <div class="col-sm-4">
+                                    <label>Cantidad:</label>
+                                    <input type="text" class="form-control" id="txtCant" value=1>
+                                </div>
+                                <div class="col-sm-4">
+                                    <br>
+                                    <button id="btnRegistrar" class="btn btn-primary btn-lg">Registrar</button>
+                                    <button id="btnEliminar" class="btn btn-danger btn-lg">Eliminar</button>
+                                </div>
+                            </div>
+                </div>
+        </div>
+
+        <br><br><br>
+        
+        <div class="col-sm-1">
+        <!--BORDES EXTERNOS-->
+        </div>
+
+        <div class="col-sm-10">
+            <h1>Historial de registros</h1>
+            <table id="gridMateriales" class="display">
+                <thead>
+                    <tr>
+                        <th>id</th>
+                        <th>Nombre</th>
+                        <th>Cantidad</th>
+                        <th>fecha</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+
+        <div class="col-sm-12">
+        <!--BORDES EXTERNOS-->
+        </div>
+
+    </body>
+</html>
+
+<script type="text/javascript" src="/js/moment.min.js"></script>
+<script type="text/javascript" src="/js/sweetalert2.all.min.js"></script>
+<script type="text/javascript" src="/js/jquery-3.3.1.js"></script>
+<script type="text/javascript" src="/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/js/popper.min.js"></script>
+<script type="text/javascript" src="/js/jquery.dataTables.js"></script>
+<script type="text/javascript" src="/js/select2.min.js"></script>
+
+
+
+
+<script>
+
+    var myJSON = {};
+    var idSelected = ""; //id del seleccionado datatable
+
+    $(document).ready(function() {
+        $(btnEliminar).hide();
+        cargarDatosCBO();
+        cargarDatosDatatable(); 
+    });
+
+    function wait(time) {
+    return new Promise(resolve => {
+        setTimeout(() => {
+            resolve();
+        }, time);
+    });
+    }
+    function fechaHoy(){
+        var hoy = new Date();
+        var dd = hoy.getDate();
+        var mm = hoy.getMonth()+1; //hoy es 0!
+        var yyyy = hoy.getFullYear();
+        var arrId = "";
+        if(dd<10) {
+            dd='0'+dd
+        } 
+        if(mm<10) {
+            mm='0'+mm
+        } 
+        hoy = dd+'/'+mm+'/'+yyyy;
+        return hoy;
+    }
+
+    
+    function cargarDatosCBO (){
+        $.ajax({
+            url: '/materiales',
+            type: 'GET'
+        })
+        .done(function(rows) {
+            myJSON = rows;
+            $("#selectMaterial").select2({
+                data: rows
+            });
+        })
+        .fail(function() {
+            console.log("error");
+        });
+    }
+
+    function cargarDatosDatatable (){
+
+        $.ajax({
+            url: '/used',
+            type: 'GET'
+        })
+        .done(function(rows) {
+            myJSON = rows;
+            console.log(rows);
+            contador = 0;
+           while(contador < myJSON.length){
+                myJSON[contador]["fecha"] = moment(myJSON[contador]["fecha"]).format("DD-MM-YYYY");
+                //console.log(myJSON[contador]["fecha"])
+                contador++;
+            }
+            
+            $('#gridMateriales').empty();
+            datatable = $('#gridMateriales').dataTable({
+                "bAutoWidth" : false,
+                "aaData" : myJSON,
+                "order": [ 0, 'desc' ],
+                "columns" : [ 
+                    {"data" : "id"}, 
+                    {"data" : "nombre"},
+                    {"data" : "cantidad"},
+                    {"data" : "fecha"}
+                ],
+                "columnDefs": [
+                    {"targets": [  ],
+                    "visible": false,
+                    "searchable": true},
+                ],
+                "select":
+                    {style: 'single'}
+                })
+                
+                $('#gridMateriales tbody').on('click', 'tr', function () {
+                    idSelected = $(this)[0].children[0].innerText;
+                    console.log($(this)[0].children[0].innerText);
+                    $(btnEliminar).show();
+                    
+                    //hace visible la selecion 
+                    if ( $(this).hasClass('selected') ) {
+                        $(this).removeClass('selected');
+                    }
+                    else {
+                        datatable.$('tr.selected').removeClass('selected');
+                        $(this).addClass('selected');
+                    }
+                    });
+                })
+        .fail(function() {
+                console.log("error");
+        });
+    }
+
+
+    $('#btnRegistrar').click(function(){
+        
+        var idInsert = 0
+        var selectedMaterials = $('#selectMaterial').val();
+        var cant = $('#txtCant').val();
+        var cont = 0;
+        var nombreMaterial = ""
+
+        if(selectedMaterials.length != 0){ //con materiales seleccionados
+            
+            for(var j in selectedMaterials){
+               // console.log(j);
+                $.ajax({
+                    url: '/inserta',
+                    type: 'GET',
+                    data: {cantidad: cant , material: selectedMaterials[j]}
+                })
+                .done(function(rows) {
+                    idInsert = rows["insertId"];
+                    var datatable = $('#gridMateriales').DataTable();
+                    var hoy = new Date();
+                    nombreMaterial = $('#selectMaterial').select2('data')[cont]["text"];
+                    cont = cont +1;
+                    console.log(nombreMaterial)
+                    console.log(cont);
+                    
+                    hoy = fechaHoy();
+
+                    datatable.row.add( {
+                        "id": idInsert,
+                        "nombre": nombreMaterial,
+                        "cantidad": cant,
+                        "fecha": hoy 
+                    } ).draw();
+                    
+                })
+                .fail(function() {
+                    console.log("error");
+                });
+            }
+           
+           // var unmaterial = selectedMaterials[0];
+
+            swal({
+                position: 'center',
+                type: 'success',
+                title: 'Materiales Registrados',
+                showConfirmButton: false,
+                timer: 1000
+            })
+        }
+
+       //$('#selectMaterial').val('').trigger("change");
+       // $('#selectMaterial').val(null).trigger('change');
+
+    });
+
+
+    $('#btnEliminar').click(function(){
+        swal({
+
+        text: "desea eliminar?",
+        type: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'si, eliminalo'
+        }).then((result) => {
+        if (result.value) {
+            console.log(idSelected+' id seleccionado');
+            $.ajax({
+                url: '/elimina/:'+idSelected,
+                type: 'DELETE',
+                data: 1
+            })
+            .done(function(res) {
+                console.log(res)
+                       var table = $('#gridMateriales').DataTable();
+                        var rows = table
+                            .rows( '.selected' )
+                            .remove()
+                            .draw();
+            })
+            .fail(function() {
+                console.log("error");
+            });
+            swal({
+                type: 'success',
+                title: 'Eliminado del sistema',
+                showConfirmButton: false,
+                timer: 1000
+            })
+        }
+        })
+        /*
+        var table = $('#example').DataTable();
+ 
+        var rows = table
+            .rows( '.selected' )
+            .remove()
+            .draw();
+        
+        */
+        
+        //var selectedMaterials = $('#selectMaterial').val();
+        //console.log (selectedMaterials);
+        //for(var j in selectedMaterials){
+        //    console.log(selectedMaterials[j])
+        //}
+        //var cant = $('#txtCant').val();
+
+    });
+
+
+    $('#txtCant').click(function(){
+        $(btnEliminar).hide();
+    });
+
+
+    $('#selectMaterial').on('select2:open', function (e) {
+        $(btnEliminar).hide();
+
+    });
+  
+
+</script>
